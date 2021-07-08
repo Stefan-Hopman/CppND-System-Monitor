@@ -113,19 +113,21 @@ long LinuxParser::Jiffies() {
 // DONE: Read and return the number of active jiffies for a PID
 // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
 long LinuxParser::ActiveJiffies(int pid) {
-  long activeJiffies;
+  long tTime, eTime;
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
-  string line, placeholder, utime, stime, cutime, cstime;
+  string line, placeholder, utime, stime, cutime, cstime, junk, startTime;
   if(filestream.is_open()){
     getline(filestream, line);
     std::istringstream linestream(line);
     for(int i = 0; i < 13; i++){
       linestream >> placeholder;
     }
-    linestream >> utime >> stime >> cutime >> cstime;
+    linestream >> utime >> stime >> cutime >> cstime >> junk >> junk >> junk >> junk >> startTime;
   }
-  activeJiffies = std::stol(utime) + std::stol(stime) + std::stol(cutime) +std::stol(cstime);
-  return activeJiffies;
+  tTime = std::stol(utime) + std::stol(stime) + std::stol(cutime) +std::stol(cstime);
+  eTime  = Jiffies() - std::stol(startTime);
+  float cpuUtilization = (float) tTime/eTime;
+  return cpuUtilization;
  }
 
 // DONE: Read and return the number of active jiffies for the system
@@ -266,20 +268,21 @@ string LinuxParser::Uid(int pid) {
       }
   }
  }
+ return 0;
 }
 
 // DONE: Read and return the user associated with a process
 string LinuxParser::User(int pid) { 
-  string key, line, value;
+  string key, line, value, x;
   std::ifstream filestream(kPasswordPath);
   string userId = Uid(pid);
   if(filestream.is_open()){
     while(std::getline(filestream, line)){
       std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line);
-      while(linestream >> key >> value){
-        if(key == userId){
-          return value;
+      while(linestream >> key >> x >> value){
+        if(value == userId){
+          return key;
         }
       }
     }
@@ -289,16 +292,19 @@ string LinuxParser::User(int pid) {
 
 // DONE: Read and return the uptime of a process
 
-long LinuxParser::UpTime(int pid) { 
-  long uptime{0};
-  string value, line;
-  std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
+long LinuxParser::UpTime(int pid) {
+  std::string line, remove;
+  long upTime;
+  long pidUpTime;
+  std::ifstream filestream(kProcDirectory+std::to_string(pid)+kStatFilename);
   if(filestream.is_open()){
-    std::getline(filestream, line);
+    std::getline(filestream,line);
     std::istringstream linestream(line);
-    for(int i = 0; i <= 21; i++){
-      linestream >> uptime;
+    linestream>>remove>>remove>>remove;
+    for(int i=0;i<19;++i){
+      linestream >>  upTime;
     }
   }
-  return uptime/sysconf(_SC_CLK_TCK);
- }
+  pidUpTime = (upTime/sysconf(_SC_CLK_TCK));
+  return pidUpTime;
+}
