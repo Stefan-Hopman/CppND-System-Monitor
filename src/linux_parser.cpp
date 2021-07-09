@@ -79,27 +79,25 @@ float LinuxParser::MemoryUtilization() {
         if(key == "MemTotal"){
           total_memory = value;
         }
-        else if(key ==  "Memfree"){
+        else if(key ==  "MemFree"){
           free_memory = value;
         }
-        else if(key == "Buffers")
-          buffers = value;
     }
   }
-  memory_utilization = 1.0 - (free_memory/(total_memory - buffers));
-  return memory_utilization;
+  memory_utilization = total_memory - free_memory;
+  return memory_utilization/total_memory;
   return 0;
  }
 
 // Done: Read and return the system uptime
 long LinuxParser::UpTime() {
-  long UPTime;
+  long UPTime, junk;
   string line;
   std::ifstream stream(kProcDirectory + kUptimeFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
-    linestream >> UPTime;
+    linestream >> UPTime >> junk;
     }
   return UPTime;
  }
@@ -108,12 +106,13 @@ long LinuxParser::UpTime() {
 long LinuxParser::Jiffies() { 
   long Jiffies{0};
   Jiffies = UpTime() * (sysconf(_SC_CLK_TCK));
-  return Jiffies; }
+  return Jiffies; 
+  }
 
 // DONE: Read and return the number of active jiffies for a PID
 // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
 long LinuxParser::ActiveJiffies(int pid) {
-  long tTime, eTime;
+  long tTime, eTime; // total and elapsed time
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
   string line, placeholder, utime, stime, cutime, cstime, junk, startTime;
   if(filestream.is_open()){
@@ -124,9 +123,9 @@ long LinuxParser::ActiveJiffies(int pid) {
     }
     linestream >> utime >> stime >> cutime >> cstime >> junk >> junk >> junk >> junk >> startTime;
   }
-  tTime = std::stol(utime) + std::stol(stime) + std::stol(cutime) +std::stol(cstime);
+  tTime = std::stol(utime) + std::stol(stime) + std::stol(cutime) + std::stol(cstime);
   eTime  = Jiffies() - std::stol(startTime);
-  float cpuUtilization = (float) tTime/eTime;
+  float cpuUtilization = (float) tTime/eTime; //total time / elapsed time
   return cpuUtilization;
  }
 
@@ -291,18 +290,16 @@ string LinuxParser::User(int pid) {
  }
 
 // DONE: Read and return the uptime of a process
-
 long LinuxParser::UpTime(int pid) {
   std::string line, remove;
-  long upTime;
-  long pidUpTime;
+  long upTime, pidUpTime;
   std::ifstream filestream(kProcDirectory+std::to_string(pid)+kStatFilename);
   if(filestream.is_open()){
     std::getline(filestream,line);
     std::istringstream linestream(line);
     linestream>>remove>>remove>>remove;
     for(int i=0;i<19;++i){
-      linestream >>  upTime;
+      linestream >> upTime;
     }
   }
   pidUpTime = (upTime/sysconf(_SC_CLK_TCK));
