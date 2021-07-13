@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <string>
 #include <vector>
-
+#include <iostream>
 #include "linux_parser.h"
 
 using std::stof;
@@ -35,13 +35,13 @@ string LinuxParser::OperatingSystem() {
 
 // DONE: An example of how to read data from the filesystem
 string LinuxParser::Kernel() {
-  string os, kernel;
+  string os, kernel, junk;
   string line;
   std::ifstream stream(kProcDirectory + kVersionFilename);
   if (stream.is_open()) {
     std::getline(stream, line);
     std::istringstream linestream(line);
-    linestream >> os >> kernel;
+    linestream >> os >> junk >> kernel;
   }
   return kernel;
 }
@@ -100,6 +100,7 @@ long LinuxParser::UpTime() {
     linestream >> UPTime >> junk;
     }
   return UPTime;
+  stream.close();
  }
 
 // DONE: Read and return the number of jiffies for the system
@@ -112,7 +113,8 @@ long LinuxParser::Jiffies() {
 // DONE: Read and return the number of active jiffies for a PID
 // https://stackoverflow.com/questions/16726779/how-do-i-get-the-total-cpu-usage-of-an-application-from-proc-pid-stat/16736599#16736599
 long LinuxParser::ActiveJiffies(int pid) {
-  long tTime, eTime; // total and elapsed time
+  long tTime;
+  long eTime; // total and elapsed time
   std::ifstream filestream(kProcDirectory + to_string(pid) + kStatFilename);
   string line, placeholder, utime, stime, cutime, cstime, junk, startTime;
   if(filestream.is_open()){
@@ -240,7 +242,7 @@ string LinuxParser::Ram(int pid) {
     std::replace(line.begin(), line.end(), ':', ' ');
     std::istringstream linestream(line); 
       while(linestream >> key >> value){
-        if(key == "VmSize"){
+        if(key == "VmRSS"){
           ram = value;
         }
       }
@@ -292,16 +294,23 @@ string LinuxParser::User(int pid) {
 // DONE: Read and return the uptime of a process
 long LinuxParser::UpTime(int pid) {
   std::string line, remove;
-  long upTime, pidUpTime;
+  long value, pidUpTime;
   std::ifstream filestream(kProcDirectory+std::to_string(pid)+kStatFilename);
   if(filestream.is_open()){
     std::getline(filestream,line);
     std::istringstream linestream(line);
     linestream>>remove>>remove>>remove;
     for(int i=0;i<19;++i){
-      linestream >> upTime;
+      linestream >> value;
     }
   }
-  pidUpTime = (upTime/sysconf(_SC_CLK_TCK));
+  string version = Kernel(); // gets the version of the system
+  version.resize(4); // resizes the  version string to only include four digits
+  double versionCode = stod(version);
+  if(versionCode < 2.6){
+  pidUpTime = UpTime() - value;}
+  else{  
+  pidUpTime = UpTime() - (value/sysconf(_SC_CLK_TCK));
   return pidUpTime;
+  }
 }
