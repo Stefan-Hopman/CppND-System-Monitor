@@ -69,7 +69,7 @@ vector<int> LinuxParser::Pids() {
 // Done: Read and return the system memory utilization
 float LinuxParser::MemoryUtilization() {
   string line, key;
-  float free_memory, total_memory, buffers, memory_utilization, value;
+  float free_memory, total_memory, memory_utilization, value;
   std::ifstream filestream(kProcDirectory + kMeminfoFilename);
   if (filestream.is_open()) {
     while (std::getline(filestream, line)){
@@ -99,8 +99,10 @@ long LinuxParser::UpTime() {
     std::istringstream linestream(line);
     linestream >> UPTime >> junk;
     }
-  return UPTime;
   stream.close();
+  return UPTime;
+  return 0;
+  
  }
 
 // DONE: Read and return the number of jiffies for the system
@@ -311,6 +313,6 @@ long LinuxParser::UpTime(int pid) {
   pidUpTime = UpTime() - value;}
   else{  
   pidUpTime = UpTime() - (value/sysconf(_SC_CLK_TCK));
-  return pidUpTime;
   }
+  return pidUpTime;
 }
